@@ -131,41 +131,16 @@ function Login({ data, onLogin }: { data: Store; onLogin: (u: User) => void }) {
   }
   return (
     <div className="s-login">
-      <div className="s-login-visual">
-        <Logo />
-        <div>
-          <span className="s-eyebrow">CONTROL · TRAZABILIDAD · INFORMACIÓN</span>
-          <h1>
-            Tu infraestructura.
-            <br />
-            Toda su historia.
-            <br />
-            <em>En un solo lugar.</em>
-          </h1>
-          <p>Sistema de Gestión de Equipos y Mantenimiento Tecnológico Institucional.</p>
-          <div className="s-login-features">
-            {[
-              ["inventory", "Inventario detallado"],
-              ["maintenance", "Mantenimiento y soporte"],
-              ["reports", "Reportes institucionales"],
-            ].map(([icon, label]) => (
-              <span key={label}>
-                <Icon name={icon} />
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-        <small>Prototipo académico · Datos ficticios · Acceso simulado</small>
-      </div>
       <div className="s-login-form">
         <form onSubmit={submit}>
-          <span className="s-login-symbol">
-            <Icon name="shield" size={28} />
-          </span>
-          <span className="s-eyebrow">BIENVENIDO A SIGEMTI</span>
+          <header className="s-login-brand">
+            <span className="s-login-symbol"><Icon name="hardware" size={26} /></span>
+            <h1>SIGEMTI</h1>
+            <p>Sistema de Gestión de Equipos y Mantenimiento Tecnológico Institucional</p>
+            <span className="s-login-institution">{data.institution}</span>
+          </header>
           <h2>Iniciar sesión</h2>
-          <p>Ingresa a tu espacio de gestión institucional.</p>
+          <p>Accede a tu espacio de gestión institucional.</p>
           {error && (
             <div role="alert" className="s-error">
               {error}
@@ -204,27 +179,18 @@ function Login({ data, onLogin }: { data: Store; onLogin: (u: User) => void }) {
             Iniciar sesión
           </Button>
           <div className="s-demo">
-            <span>ACCESOS DE DEMOSTRACIÓN</span>
-            <div>
-              {data.users
-                .filter((u) => u.active === "Activo")
-
-                .map((u) => (
-                  <button
-                    type="button"
-                    key={u.id}
-                    onClick={() => {
-                      setEmail(u.email);
-                      setPassword("Demo2026!");
-                      setError("");
-                    }}
-                  >
-                    <Icon name={u.role === "Administrador" ? "shield" : "maintenance"} />
-                    <b>{u.role}</b>
-                    <small>{u.name}</small>
-                  </button>
-                ))}
-            </div>
+            <label htmlFor="demo-user">Acceso de demostración</label>
+            <select id="demo-user" value={data.users.some((u) => u.active === "Activo" && u.email === email) ? email : ""} onChange={(e) => {
+              if (!e.target.value) return;
+              setEmail(e.target.value);
+              setPassword("Demo2026!");
+              setError("");
+            }}>
+              <option value="" disabled>Selecciona una cuenta</option>
+              {data.users.filter((u) => u.active === "Activo").map((u) => (
+                <option key={u.id} value={u.email}>{u.name} · {u.role}</option>
+              ))}
+            </select>
             <small>Contraseña de demostración: Demo2026!</small>
           </div>
           <p className="s-login-note">

@@ -837,7 +837,12 @@ export function readStore(): Store {
   try {
     const v = JSON.parse(localStorage.getItem("sigemti-v2") || "null");
     if (v?.version === 2 && Array.isArray(v.equipment) && Array.isArray(v.components))
-      return configureAdministrators(addPeripheralRecords(v));
+      return configureAdministrators(addPeripheralRecords({
+        ...v,
+        institution: !v.institution || v.institution.trim().toLocaleLowerCase("es") === "instituto tecnológico central"
+          ? seed.institution
+          : v.institution,
+      }));
     const old = JSON.parse(localStorage.getItem("sigemti-v1") || "null");
     if (old?.version === 1 && Array.isArray(old.equipment)) {
       const eq = old.equipment.map((e: Equipment) => ({ ...baseTechnical, ...e }));

@@ -1723,7 +1723,7 @@
 .s-login {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: 1fr;
   background: white;
   font-family: Inter, "Segoe UI", sans-serif;
 }
@@ -2338,7 +2338,7 @@
   .s-login-form {
     padding: 35px 25px;
     gap: 30px;
-    min-height: calc(100vh - 90px);
+    min-height: 100vh;
   }
   .s-login-form > form {
     max-width: 380px;
@@ -3667,4 +3667,61 @@
     min-width: 34px;
     padding: 4px;
   }
+}
+
+/* Spacious login, kept within the viewport. */
+@media screen {
+  .s-login { position: fixed; inset: 0; height: 100dvh; min-height: 0; overflow: hidden; background: #f7f9fc; }
+  .s-login .s-login-form { min-height: 0; padding: 32px; gap: 24px; }
+  .s-login .s-login-form > form {
+    width: 100%; max-width: 1040px; padding: 56px;
+    display: grid; grid-template-columns: 1fr 1fr; column-gap: 64px;
+    background: #fff; border: 1px solid #e5eaf1; border-radius: 24px;
+    box-shadow: 0 18px 60px #18365706;
+  }
+  .s-login-brand { grid-column: 1; grid-row: 1 / 9; align-self: center; padding-right: 40px; border-right: 1px solid #e8edf3; }
+  .s-login .s-login-form > form > :not(.s-login-brand) { grid-column: 2; }
+  .s-login .s-login-symbol { width: 56px; height: 56px; margin: 0 0 24px; border-radius: 16px; }
+  .s-login .s-login-brand h1 { font-size: clamp(36px, 4vw, 48px); line-height: 1.1; margin: 0; color: #193454; font-weight: 750; letter-spacing: -1.5px; }
+  .s-login .s-login-form .s-login-brand p { margin: 16px 0 28px; max-width: 330px; font-size: 18px; line-height: 1.6; color: #64748b; }
+  .s-login-institution { display: inline-block; color: #40536c; font-size: 12px; font-weight: 650; letter-spacing: 1.2px; line-height: 1.6; }
+  .s-login .s-login-form h2 { font-size: 28px; margin: 0 0 6px; letter-spacing: -.6px; }
+  .s-login .s-login-form p { font-size: 14px; line-height: 1.5; margin-bottom: 26px; color: #64748b; }
+  .s-login .s-login-form label { font-size: 14px; color: #40536c; margin-bottom: 18px; gap: 8px; }
+  .s-login .s-login-form input { min-height: 48px; padding: 12px 14px; font-size: 16px; border-radius: 9px; }
+  .s-login .s-password input { padding-right: 44px; }
+  .s-login .s-password button { top: 15px; }
+  .s-login .s-login-form .s-button { height: 48px; min-height: 48px; margin-top: 0; font-size: 15px; border-radius: 9px; }
+  .s-login .s-demo { margin-top: 24px; padding-top: 20px; }
+  .s-login .s-demo label { margin-bottom: 8px; }
+  .s-login .s-demo select { width: 100%; min-height: 44px; border: 1px solid #dce5f2; border-radius: 9px; padding: 10px; font-size: 14px; color: #40536c; background: #f8fafc; }
+  .s-login .s-demo > small { margin-top: 10px; color: #64748b; font-size: 12px; }
+  .s-login .s-login-form .s-login-note { margin: 18px 0 0; font-size: 12px; }
+  .s-login .s-login-form > small { color: #64748b; font-size: 12px; }
+  .s-login .s-error { font-size: 13px; padding: 8px; margin-bottom: 8px; }
+}
+@media screen and (max-width: 760px) {
+  .s-login .s-login-form { padding: 16px; gap: 12px; }
+  .s-login .s-login-form > form { max-width: 480px; display: block; padding: 24px; border-radius: 18px; }
+  .s-login-brand { padding: 0; border: 0; text-align: center; margin-bottom: 22px; }
+  .s-login .s-login-symbol { display: none; }
+  .s-login .s-login-brand h1 { font-size: 32px; }
+  .s-login .s-login-form .s-login-brand p { font-size: 14px; line-height: 1.45; margin: 8px auto 10px; }
+  .s-login-institution { font-size: 11px; letter-spacing: .8px; }
+}
+@media screen and (max-height: 740px) {
+  .s-login .s-login-form { padding: 12px 20px; gap: 10px; }
+  .s-login .s-login-form > form { padding: 24px; }
+  .s-login-brand { margin-bottom: 14px; }
+  .s-login .s-login-form p { margin-bottom: 12px; }
+  .s-login .s-login-form label { margin-bottom: 12px; }
+  .s-login .s-demo { margin-top: 14px; padding-top: 12px; }
+  .s-login .s-login-form .s-login-note { margin-top: 10px; }
+}
+@media screen and (max-height: 620px) and (max-width: 760px) {
+  .s-login .s-login-form > form { padding: 16px 22px; }
+  .s-login .s-login-form input { min-height: 42px; padding: 9px 12px; }
+  .s-login .s-password button { top: 12px; }
+  .s-login .s-login-form .s-button { height: 42px; min-height: 42px; }
+  .s-login .s-login-form .s-login-note { display: none; }
 }
