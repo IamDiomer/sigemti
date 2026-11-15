@@ -1,0 +1,466 @@
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+
+type Page =
+  | "dashboard"
+  | "inventario"
+  | "ficha"
+  | "mantenimiento"
+  | "hardware"
+  | "repotenciados"
+  | "areas"
+  | "reportes"
+  | "alertas"
+  | "administracion";
+
+type Equipment = {
+  code: string;
+  internal: string;
+  name: string;
+  type: string;
+  brand: string;
+  model: string;
+  serial: string;
+  area: string;
+  owner: string;
+  status: "Operativo" | "En mantenimiento" | "Repotenciado" | "Fuera de servicio";
+  acquired: string;
+  maintenance: string;
+};
+
+const equipment: Equipment[] = [
+  { code: "PAT-2024-0081", internal: "PC-CON-014", name: "Estación Contable 14", type: "Escritorio", brand: "Dell", model: "OptiPlex 7090", serial: "DL7090-1842", area: "Contabilidad", owner: "María Ortega", status: "Operativo", acquired: "12/03/2022", maintenance: "18/05/2025" },
+  { code: "PAT-2022-0034", internal: "PC-ADM-001", name: "Estación Administrativa", type: "Escritorio", brand: "Lenovo", model: "ThinkCentre M720", serial: "LNV-M72-3209", area: "Administración", owner: "Carlos Ramos", status: "Repotenciado", acquired: "08/09/2019", maintenance: "22/05/2025" },
+  { code: "PAT-2024-0112", internal: "LAP-GER-003", name: "Laptop Gerencia", type: "Laptop", brand: "HP", model: "EliteBook 840 G8", serial: "HP840-7721", area: "Gerencia", owner: "Ana Salazar", status: "Operativo", acquired: "16/01/2023", maintenance: "04/04/2025" },
+  { code: "PAT-2021-0019", internal: "IMP-RH-002", name: "Impresora RR. HH.", type: "Impresora", brand: "Epson", model: "WorkForce Pro", serial: "EPS-WF-9228", area: "Recursos Humanos", owner: "Lucía Vega", status: "En mantenimiento", acquired: "11/07/2021", maintenance: "En curso" },
+  { code: "PAT-2023-0068", internal: "SRV-INF-002", name: "Servidor de Aplicaciones", type: "Servidor", brand: "Dell", model: "PowerEdge R550", serial: "PE550-1180", area: "Informática", owner: "David Núñez", status: "Operativo", acquired: "27/06/2023", maintenance: "29/05/2025" },
+  { code: "PAT-2020-0046", internal: "PC-TES-007", name: "Equipo Tesorería 07", type: "Escritorio", brand: "HP", model: "ProDesk 400", serial: "HP400-4420", area: "Tesorería", owner: "Pedro León", status: "Fuera de servicio", acquired: "20/02/2020", maintenance: "11/01/2025" },
+  { code: "PAT-2023-0091", internal: "MON-LOG-011", name: "Monitor Logística", type: "Monitor", brand: "LG", model: "24MP400", serial: "LG24-50182", area: "Logística", owner: "Jorge Pineda", status: "Operativo", acquired: "02/08/2023", maintenance: "14/03/2025" },
+];
+
+const nav: { section?: string; page: Page; label: string; icon: string; badge?: string }[] = [
+  { section: "GENERAL", page: "dashboard", label: "Panel principal", icon: "grid" },
+  { page: "inventario", label: "Inventario", icon: "monitor" },
+  { section: "GESTIÓN TÉCNICA", page: "mantenimiento", label: "Mantenimientos", icon: "tools", badge: "8" },
+  { page: "hardware", label: "Cambios de hardware", icon: "cpu" },
+  { page: "repotenciados", label: "Repotenciados", icon: "zap" },
+  { page: "areas", label: "Áreas institucionales", icon: "building" },
+  { section: "ANÁLISIS", page: "reportes", label: "Reportes", icon: "chart" },
+  { page: "alertas", label: "Alertas", icon: "bell", badge: "12" },
+  { section: "SISTEMA", page: "administracion", label: "Administración", icon: "settings" },
+];
+
+const pageTitles: Record<Page, [string, string]> = {
+  dashboard: ["Panel principal", "Resumen general del inventario tecnológico"],
+  inventario: ["Inventario de equipos", "Gestión y control de activos tecnológicos"],
+  ficha: ["Ficha técnica del equipo", "Información técnica y trazabilidad completa"],
+  mantenimiento: ["Mantenimientos", "Planificación y registro de intervenciones técnicas"],
+  hardware: ["Cambios de hardware", "Historial de reemplazos de componentes"],
+  repotenciados: ["Equipos repotenciados", "Control de mejoras y actualización tecnológica"],
+  areas: ["Áreas institucionales", "Distribución de activos por unidad organizacional"],
+  reportes: ["Reportes institucionales", "Generación y exportación de información consolidada"],
+  alertas: ["Centro de alertas", "Eventos que requieren seguimiento técnico"],
+  administracion: ["Administración del sistema", "Usuarios, permisos y configuración institucional"],
+};
+
+const reportTypes = [
+  ["Inventario general", "Listado patrimonial, técnico y administrativo completo", "monitor"],
+  ["Equipos por área", "Distribución y detalle por unidad institucional", "building"],
+  ["Características técnicas", "Procesador, memoria, almacenamiento y software", "cpu"],
+  ["Mantenimientos realizados", "Intervenciones por tipo, fechas, equipos y áreas", "tools"],
+  ["Equipos repotenciados", "Mejoras tecnológicas, componentes y costos", "zap"],
+  ["Cambios de hardware", "Historial de configuración anterior y nueva", "swap"],
+  ["Estado de equipos", "Situación operativa del inventario", "check"],
+  ["Historial individual", "Expediente integral por equipo", "file"],
+  ["Costos de mantenimiento", "Gastos por equipo, tipo y área", "coins"],
+  ["Mantenimientos pendientes", "Programaciones próximas y vencidas", "clock"],
+];
+
+function Icon({ name, size = 18 }: { name: string; size?: number }) {
+  const paths: Record<string, ReactNode> = {
+    grid: <><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>,
+    monitor: <><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></>,
+    tools: <><path d="m14.7 6.3 3-3a4 4 0 0 1-5 5l-7.8 7.8a2.1 2.1 0 0 0 3 3l7.8-7.8a4 4 0 0 0 5-5l-3 3z"/><path d="m5 4 3 3"/></>,
+    cpu: <><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4"/></>,
+    zap: <path d="M13 2 4 14h7l-1 8 9-12h-7z"/>,
+    building: <><path d="M4 22V4l8-2 8 2v18M2 22h20"/><path d="M8 7h2m4 0h2M8 11h2m4 0h2M8 15h2m4 0h2M9 22v-3h6v3"/></>,
+    chart: <><path d="M4 20V10m6 10V4m6 16v-7m5 7H2"/></>,
+    bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.15.36.36.7.6 1 .3.28.7.42 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15z"/></>,
+    search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
+    plus: <path d="M12 5v14M5 12h14"/>,
+    download: <><path d="M12 3v12m-4-4 4 4 4-4M4 20h16"/></>,
+    chevron: <path d="m9 18 6-6-6-6"/>,
+    eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></>,
+    edit: <><path d="m4 16-1 5 5-1L19 9l-4-4z"/><path d="m13.5 6.5 4 4"/></>,
+    file: <><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6m-6 4h6"/></>,
+    clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+    swap: <><path d="M4 7h14l-3-3m3 13H4l3 3"/></>,
+    check: <><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></>,
+    coins: <><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v5c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 11v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></>,
+    menu: <path d="M4 6h16M4 12h16M4 18h16"/>,
+    x: <path d="m6 6 12 12M18 6 6 18"/>,
+    logout: <><path d="M10 17l5-5-5-5m5 5H3"/><path d="M14 3h6v18h-6"/></>,
+    filter: <path d="M3 5h18l-7 8v6l-4 2v-8z"/>,
+  };
+  return <svg aria-hidden="true" className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name] || paths.file}</svg>;
+}
+
+function Status({ children }: { children: ReactNode }) {
+  const text = String(children).toLowerCase();
+  const tone = text.includes("operativo") || text.includes("finalizado") || text.includes("baja") ? "green" : text.includes("mantenimiento") || text.includes("proceso") || text.includes("media") ? "amber" : text.includes("fuera") || text.includes("alta") || text.includes("vencido") ? "red" : "blue";
+  return <span className={`status ${tone}`}><i />{children}</span>;
+}
+
+function Logo({ dark = false }: { dark?: boolean }) {
+  return <div className={`brand ${dark ? "brand-dark" : ""}`}>
+    <div className="brand-mark"><Icon name="cpu" size={23}/></div>
+    <div><strong>SIGEMTI</strong><span>Gestión tecnológica</span></div>
+  </div>;
+}
+
+function Modal({ title, onClose, children, wide = false, action = "Guardar registro" }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean; action?: string }) {
+  return <div className="modal-backdrop" onMouseDown={onClose}>
+    <div className={`modal ${wide ? "modal-wide" : ""}`} onMouseDown={(e) => e.stopPropagation()}>
+      <div className="modal-head"><div><h2>{title}</h2><p>Complete la información solicitada</p></div><button className="icon-btn" onClick={onClose}><Icon name="x"/></button></div>
+      <div className="modal-body">{children}</div>
+      <div className="modal-foot"><button className="btn secondary" onClick={onClose}>Cancelar</button><button className="btn primary" onClick={onClose}><Icon name="check"/>{action}</button></div>
+    </div>
+  </div>;
+}
+
+function Field({ label, value, placeholder, type = "text", name }: { label: string; value?: string; placeholder?: string; type?: string; name?: string }) {
+  return <label className="field"><span>{label}</span><input name={name} type={type} defaultValue={value} placeholder={placeholder || `Ingrese ${label.toLowerCase()}`}/></label>;
+}
+
+function SelectField({ label, options }: { label: string; options: string[] }) {
+  return <label className="field"><span>{label}</span><select>{options.map((o) => <option key={o}>{o}</option>)}</select></label>;
+}
+
+function Login({ onLogin }: { onLogin: () => void }) {
+  const [error, setError] = useState("");
+  const [email, setEmail] = useState("admin@institucion.gob.pe");
+  const [password, setPassword] = useState("sigemti2025");
+  const [showPassword, setShowPassword] = useState(false);
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!email.trim() || !password.trim()) setError("Ingrese su usuario y contraseña para continuar.");
+    else onLogin();
+  }
+  const useDemo = (role: "admin" | "tecnico") => {
+    setEmail(role === "admin" ? "admin@institucion.gob.pe" : "tecnico@institucion.gob.pe");
+    setPassword("sigemti2025");
+    setError("");
+  };
+  return <div className="login-minimal">
+    <header className="login-minimal-header">
+      <Logo />
+      <div><span className="system-dot"/> Sistema disponible</div>
+    </header>
+    <main className="login-minimal-main">
+      <form className="login-minimal-card" onSubmit={submit}>
+        <div className="login-card-intro">
+          <span className="login-icon"><Icon name="monitor" size={22}/></span>
+          <span className="eyebrow">ACCESO INSTITUCIONAL</span>
+          <h1>Iniciar sesión</h1>
+          <p>Ingrese sus credenciales para continuar a SIGEMTI.</p>
+        </div>
+        {error && <div className="form-error">{error}</div>}
+        <label className="login-field">
+          <span>Usuario o correo electrónico</span>
+          <div><Icon name="building" size={17}/><input name="email" value={email} onChange={(e)=>setEmail(e.target.value)} autoComplete="username" placeholder="nombre@institucion.gob.pe"/></div>
+        </label>
+        <label className="login-field">
+          <span>Contraseña</span>
+          <div><Icon name="settings" size={17}/><input name="password" value={password} onChange={(e)=>setPassword(e.target.value)} type={showPassword ? "text" : "password"} autoComplete="current-password"/><button type="button" onClick={()=>setShowPassword(!showPassword)}>{showPassword ? "Ocultar" : "Mostrar"}</button></div>
+        </label>
+        <div className="login-options"><label><input type="checkbox" defaultChecked/> Mantener sesión iniciada</label><button type="button">Recuperar contraseña</button></div>
+        <button className="btn primary login-btn" type="submit"><span>Ingresar al sistema</span><span>→</span></button>
+        <div className="demo-access">
+          <span>Acceso rápido de demostración</span>
+          <div><button type="button" onClick={()=>useDemo("admin")}><Icon name="settings" size={15}/><span><b>Administrador</b><small>Acceso completo</small></span></button><button type="button" onClick={()=>useDemo("tecnico")}><Icon name="tools" size={15}/><span><b>Técnico</b><small>Gestión operativa</small></span></button></div>
+        </div>
+      </form>
+      <div className="login-security"><Icon name="check" size={14}/> Conexión segura y cifrada <i/> Acceso exclusivo para personal autorizado</div>
+    </main>
+    <footer className="login-minimal-footer"><span>© 2025 Institución Demo</span><div><button>Privacidad</button><button>Soporte técnico</button><span>v2.4.1</span></div></footer>
+  </div>;
+}
+
+function StatCard({ icon, label, value, detail, tone }: { icon: string; label: string; value: string; detail: string; tone: string }) {
+  return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon name={icon}/></div><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></div>;
+}
+
+function BarChart() {
+  const values = [["Administración", 82], ["Contabilidad", 66], ["Informática", 92], ["R. Humanos", 48], ["Logística", 58], ["Tesorería", 39]];
+  return <div className="horizontal-bars">{values.map(([n, v]) => <div key={n}><span>{n}</span><i><b style={{ width: `${v}%` }}/></i><strong>{Math.round(Number(v) * 0.7)}</strong></div>)}</div>;
+}
+
+function Dashboard({ go }: { go: (p: Page) => void }) {
+  return <>
+    <div className="welcome-row"><div><h2>Buenos días, Javier</h2><p>Este es el estado de la infraestructura tecnológica al 12 de junio de 2025.</p></div><button className="btn primary" onClick={() => go("inventario")}><Icon name="plus"/> Registrar equipo</button></div>
+    <div className="stats-grid">
+      <StatCard icon="monitor" label="Total de equipos" value="248" detail="+12 este año" tone="blue"/>
+      <StatCard icon="check" label="Equipos operativos" value="216" detail="87,1% del inventario" tone="green"/>
+      <StatCard icon="tools" label="En mantenimiento" value="14" detail="6 en proceso" tone="amber"/>
+      <StatCard icon="zap" label="Repotenciados" value="31" detail="+7 este trimestre" tone="purple"/>
+      <StatCard icon="x" label="Fuera de servicio" value="18" detail="7 por dar de baja" tone="red"/>
+      <StatCard icon="clock" label="Mant. pendientes" value="8" detail="3 vencidos" tone="orange"/>
+    </div>
+    <div className="dashboard-grid">
+      <div className="panel span-2"><PanelHead title="Equipos por área institucional" subtitle="Distribución actual del inventario"/><BarChart/></div>
+      <div className="panel"><PanelHead title="Estado operativo" subtitle="Distribución de 248 equipos"/><div className="donut-wrap"><div className="donut"><div><b>248</b><span>Equipos</span></div></div><div className="legend"><span><i className="green"/>Operativos <b>216</b></span><span><i className="amber"/>Mantenimiento <b>14</b></span><span><i className="red"/>Fuera de servicio <b>18</b></span></div></div></div>
+      <div className="panel span-2"><PanelHead title="Mantenimientos por mes" subtitle="Preventivos y correctivos durante 2025"/><div className="line-chart"><div className="chart-grid"/><svg viewBox="0 0 600 150" preserveAspectRatio="none"><polyline points="0,120 85,100 170,110 255,55 340,75 425,38 510,58 600,25" fill="none" stroke="#1769e0" strokeWidth="3"/><polyline points="0,132 85,120 170,92 255,112 340,90 425,105 510,72 600,88" fill="none" stroke="#f59e0b" strokeWidth="3"/></svg><div className="months"><span>Ene</span><span>Feb</span><span>Mar</span><span>Abr</span><span>May</span><span>Jun</span><span>Jul</span></div><div className="chart-key"><i className="blue"/>Preventivos <i className="amber"/>Correctivos</div></div></div>
+      <div className="panel"><PanelHead title="Equipos por tipo" subtitle="Composición del inventario"/><div className="type-list">{[["Escritorio","124","76%"],["Laptops","58","53%"],["Monitores","31","38%"],["Impresoras","22","29%"],["Servidores","13","18%"]].map(x=><div key={x[0]}><span>{x[0]}<b>{x[1]}</b></span><i><b style={{width:x[2]}}/></i></div>)}</div></div>
+    </div>
+    <div className="lower-grid">
+      <div className="panel"><PanelHead title="Últimos mantenimientos" subtitle="Intervenciones registradas recientemente" action="Ver todos" onAction={() => go("mantenimiento")}/><table className="compact-table"><thead><tr><th>Equipo</th><th>Tipo</th><th>Técnico</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
+        <tr><td><b>PC-CON-014</b><small>Contabilidad</small></td><td>Preventivo</td><td>David Núñez</td><td>10 Jun 2025</td><td><Status>Finalizado</Status></td></tr>
+        <tr><td><b>IMP-RH-002</b><small>Recursos Humanos</small></td><td>Correctivo</td><td>Elena Ruiz</td><td>09 Jun 2025</td><td><Status>En proceso</Status></td></tr>
+        <tr><td><b>SRV-INF-002</b><small>Informática</small></td><td>Predictivo</td><td>David Núñez</td><td>08 Jun 2025</td><td><Status>Finalizado</Status></td></tr>
+      </tbody></table></div>
+      <div className="panel alerts-panel"><PanelHead title="Alertas prioritarias" subtitle="Requieren atención" action="Ver todas" onAction={() => go("alertas")}/>{[
+        ["red","Mantenimiento vencido","PC-TES-007 · Venció hace 5 días"],
+        ["amber","Componente con falla","IMP-RH-002 · Unidad fusora"],
+        ["blue","Mantenimiento próximo","8 equipos · Próximos 7 días"],
+      ].map(x=><button key={x[1]} onClick={()=>go("alertas")}><i className={x[0]}><Icon name="bell"/></i><span><b>{x[1]}</b><small>{x[2]}</small></span><Icon name="chevron"/></button>)}</div>
+    </div>
+  </>;
+}
+
+function PanelHead({ title, subtitle, action, onAction }: { title: string; subtitle?: string; action?: string; onAction?: () => void }) {
+  return <div className="panel-head"><div><h3>{title}</h3>{subtitle && <p>{subtitle}</p>}</div>{action && <button onClick={onAction}>{action} <span>→</span></button>}</div>;
+}
+
+function Inventory({ go, open }: { go: (p: Page) => void; open: (m: string) => void }) {
+  const [search, setSearch] = useState("");
+  const [area, setArea] = useState("Todas las áreas");
+  const [equipmentStatus, setEquipmentStatus] = useState("Todos");
+  const [equipmentType, setEquipmentType] = useState("Todos los tipos");
+  const filtered = useMemo(() => equipment.filter(e =>
+    (area === "Todas las áreas" || e.area === area) &&
+    (equipmentStatus === "Todos" || e.status === equipmentStatus) &&
+    (equipmentType === "Todos los tipos" || e.type === equipmentType) &&
+    Object.values(e).join(" ").toLowerCase().includes(search.toLowerCase())
+  ), [search, area, equipmentStatus, equipmentType]);
+  return <>
+    <div className="toolbar"><div className="segmented">{[["Todos","248"],["Operativo","216"],["En mantenimiento","14"],["Fuera de servicio","18"]].map(([label,count])=><button key={label} className={equipmentStatus===label?"active":""} onClick={()=>setEquipmentStatus(label)}>{label === "Operativo" ? "Operativos" : label} <b>{count}</b></button>)}</div><div><button className="btn secondary"><Icon name="download"/> Exportar</button><button className="btn primary" onClick={() => open("equipment")}><Icon name="plus"/> Registrar equipo</button></div></div>
+    <div className="panel table-panel">
+      <div className="filter-row">
+        <label className="search-box"><Icon name="search"/><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Buscar por código, equipo, serie o responsable..."/></label>
+        <select value={area} onChange={(e)=>setArea(e.target.value)}><option>Todas las áreas</option>{["Contabilidad","Administración","Gerencia","Recursos Humanos","Informática","Tesorería","Logística"].map(a=><option key={a}>{a}</option>)}</select>
+        <select value={equipmentType} onChange={(e)=>setEquipmentType(e.target.value)}><option>Todos los tipos</option><option>Escritorio</option><option>Laptop</option><option>Servidor</option><option>Impresora</option><option>Monitor</option></select>
+        <select><option>Todas las marcas</option><option>Dell</option><option>HP</option><option>Lenovo</option></select>
+        <button className="btn filter-btn"><Icon name="filter"/> Más filtros</button>
+      </div>
+      {area !== "Todas las áreas" && <div className="active-filter">Filtro activo: <b>{area}</b><button onClick={()=>setArea("Todas las áreas")}>×</button></div>}
+      <div className="table-scroll"><table className="data-table"><thead><tr><th>Equipo</th><th>Tipo / Marca</th><th>N.° de serie</th><th>Área asignada</th><th>Responsable</th><th>Estado</th><th>Último mantenimiento</th><th>Acciones</th></tr></thead><tbody>{filtered.map((e)=><tr key={e.internal}>
+        <td><button className="cell-link" onClick={()=>go("ficha")}><span className="device-thumb"><Icon name={e.type === "Servidor" ? "cpu" : "monitor"}/></span><span><b>{e.internal}</b><small>{e.name}</small></span></button></td>
+        <td><b>{e.type}</b><small>{e.brand} · {e.model}</small></td><td>{e.serial}</td><td>{e.area}</td><td>{e.owner}</td><td><Status>{e.status}</Status></td><td>{e.maintenance}</td>
+        <td><div className="row-actions"><button title="Ver ficha" onClick={()=>go("ficha")}><Icon name="eye"/></button><button title="Editar" onClick={()=>open("equipment")}><Icon name="edit"/></button><button title="Mantenimiento" onClick={()=>open("maintenance")}><Icon name="tools"/></button></div></td>
+      </tr>)}</tbody></table></div>
+      <div className="pagination"><span>Mostrando <b>1–{filtered.length}</b> de <b>{filtered.length}</b> equipos</span><div><button>‹</button><button className="active">1</button><button>2</button><button>3</button><button>…</button><button>25</button><button>›</button></div></div>
+    </div>
+  </>;
+}
+
+const detailTabs = ["Información general","Características técnicas","Componentes de hardware","Historial de mantenimiento","Cambios de hardware","Repotenciaciones","Documentos"];
+
+function Detail({ open }: { open: (m: string) => void }) {
+  const [tab, setTab] = useState(0);
+  return <>
+    <div className="equipment-hero">
+      <div className="equipment-symbol"><Icon name="monitor" size={34}/><i/></div>
+      <div className="equipment-title"><div><span className="code">PC-ADM-001</span><Status>Repotenciado</Status></div><h2>Estación Administrativa Principal</h2><p>Lenovo ThinkCentre M720 · Administración</p></div>
+      <div className="hero-meta"><div><span>Responsable</span><b>Carlos Ramos</b></div><div><span>Último mantenimiento</span><b>22 may. 2025</b></div></div>
+      <div className="hero-actions"><button className="btn secondary" onClick={()=>open("equipment")}><Icon name="edit"/> Editar</button><button className="btn primary"><Icon name="file"/> Generar ficha PDF</button></div>
+    </div>
+    <div className="tabs detail-tabs">{detailTabs.map((t,i)=><button className={tab===i?"active":""} onClick={()=>setTab(i)} key={t}>{t}</button>)}</div>
+    {tab === 0 && <div className="detail-grid"><InfoCard title="Identificación patrimonial" rows={[["Código patrimonial","PAT-2022-0034"],["Código interno","PC-ADM-001"],["Número de serie","LNV-M72-3209"],["Fecha de adquisición","08 de septiembre de 2019"],["Proveedor","Tecnología Global S.A.C."],["Garantía","Vencida · 08 sep. 2022"]]}/><InfoCard title="Asignación y ubicación" rows={[["Área institucional","Administración"],["Ubicación","Edificio Central · Piso 2"],["Responsable asignado","Carlos Ramos Mendoza"],["Cargo","Especialista administrativo"],["Estado operativo","Repotenciado"],["Último inventario","15 de enero de 2025"]]}/><div className="panel span-2 note-card"><PanelHead title="Observaciones"/><p>Equipo repotenciado en noviembre de 2024. Se reemplazó memoria RAM y unidad de almacenamiento para extender su vida útil institucional.</p></div></div>}
+    {tab === 1 && <Technical />}
+    {tab === 2 && <Components open={open}/>}
+    {tab === 3 && <Timeline />}
+    {tab === 4 && <HardwareComparison compact />}
+    {tab === 5 && <UpgradeComparison />}
+    {tab === 6 && <div className="empty-state panel"><Icon name="file" size={40}/><h3>Documentos y evidencias</h3><p>Actas de asignación, fotografías, comprobantes y fichas de intervención.</p><button className="btn primary"><Icon name="plus"/> Adjuntar documento</button></div>}
+  </>;
+}
+
+function InfoCard({ title, rows }: { title: string; rows: string[][] }) {
+  return <div className="panel info-card"><PanelHead title={title}/><dl>{rows.map(r=><div key={r[0]}><dt>{r[0]}</dt><dd>{r[1]}</dd></div>)}</dl></div>;
+}
+
+function Technical() {
+  return <div className="technical-grid">
+    <TechCard icon="cpu" title="Procesador" main="Intel® Core™ i5-8500" rows={[["Fabricante","Intel"],["Generación","8.ª generación"],["Núcleos / hilos","6 / 6"],["Frecuencia","3.00 – 4.10 GHz"]]}/>
+    <TechCard icon="grid" title="Memoria RAM" main="16 GB DDR4" badge="Mejorado" rows={[["Velocidad","2666 MHz"],["Módulos","2 × 8 GB"],["Ranuras utilizadas","2 de 4"],["Disponible para expansión","2 ranuras"]]}/>
+    <TechCard icon="file" title="Almacenamiento" main="SSD NVMe 500 GB" badge="Mejorado" rows={[["Marca / modelo","Kingston NV2"],["Interfaz","PCIe 4.0 NVMe"],["Serie","50026B7785A30"],["Estado SMART","Saludable"]]}/>
+    <TechCard icon="settings" title="Placa base" main="Lenovo 312D" rows={[["Fabricante","Lenovo"],["Chipset","Intel Q370"],["BIOS","M1UKT72A"],["Fecha BIOS","14/08/2023"]]}/>
+    <TechCard icon="monitor" title="Gráficos y periféricos" main="Intel UHD Graphics 630" rows={[["Monitor","Dell P2422H · 24”"],["Teclado","Logitech K120"],["Mouse","Logitech B100"],["Red","Intel I219-LM Gigabit"]]}/>
+    <TechCard icon="check" title="Software" main="Windows 11 Pro" rows={[["Versión","23H2"],["Arquitectura","64 bits"],["Licencia","Activa · Digital"],["Ofimática","Microsoft 365 Apps"]]}/>
+  </div>;
+}
+
+function TechCard({ icon,title,main,rows,badge }: { icon:string;title:string;main:string;rows:string[][];badge?:string }) {
+  return <div className="panel tech-card"><div className="tech-head"><span><Icon name={icon}/></span><div><small>{title}</small><h3>{main}</h3></div>{badge&&<em>{badge}</em>}</div><dl>{rows.map(r=><div key={r[0]}><dt>{r[0]}</dt><dd>{r[1]}</dd></div>)}</dl></div>;
+}
+
+function Components({ open }: { open: (m:string)=>void }) {
+  return <div className="panel table-panel"><div className="content-head"><div><h3>Componentes instalados actualmente</h3><p>Configuración de hardware vigente del equipo</p></div><button className="btn primary" onClick={()=>open("hardware")}><Icon name="plus"/> Agregar componente</button></div><table className="data-table"><thead><tr><th>Identificador</th><th>Componente</th><th>Marca y modelo</th><th>Especificaciones</th><th>Instalación</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+    {[["CMP-00981","Memoria RAM","Kingston Fury","8 GB DDR4 · 2666 MHz","15/11/2024"],["CMP-00982","Memoria RAM","Kingston Fury","8 GB DDR4 · 2666 MHz","15/11/2024"],["CMP-01003","Almacenamiento","Kingston NV2","SSD NVMe · 500 GB","15/11/2024"],["CMP-00412","Procesador","Intel Core i5-8500","6 núcleos · 3.00 GHz","08/09/2019"]].map(r=><tr key={r[0]}>{r.map((c,i)=><td key={c}>{i===0?<b>{c}</b>:c}</td>)}<td><Status>Operativo</Status></td><td><div className="row-actions"><button><Icon name="edit"/></button><button onClick={()=>open("hardware")}><Icon name="swap"/></button></div></td></tr>)}
+  </tbody></table></div>;
+}
+
+function Timeline() {
+  return <div className="panel timeline-panel"><PanelHead title="Historial de mantenimiento" subtitle="Trazabilidad completa de intervenciones"/><div className="timeline">{[
+    ["22 MAY 2025","Mantenimiento preventivo","MNT-2025-0108","Limpieza interna, actualización de sistema y verificación de componentes.","David Núñez","Finalizado"],
+    ["15 NOV 2024","Repotenciación tecnológica","MNT-2024-0341","Ampliación de RAM de 4 GB a 16 GB y reemplazo de HDD por SSD NVMe.","Elena Ruiz","Finalizado"],
+    ["03 FEB 2024","Mantenimiento correctivo","MNT-2024-0042","Diagnóstico y reemplazo de fuente de alimentación con falla.","David Núñez","Finalizado"],
+  ].map(x=><div key={x[2]}><span className="timeline-date">{x[0]}</span><i/><article><div><b>{x[1]}</b><Status>{x[5]}</Status></div><small>{x[2]} · Técnico: {x[4]}</small><p>{x[3]}</p><button>Ver detalle →</button></article></div>)}</div></div>;
+}
+
+function Maintenance({ open }: { open: (m:string)=>void }) {
+  const [maintenanceStatus, setMaintenanceStatus] = useState("Todos");
+  const maintenanceRows = [
+    ["MNT-2025-0112","IMP-RH-002","Correctivo","09/06/2025","Elena Ruiz","Falla en unidad fusora","—","En proceso"],
+    ["MNT-2025-0108","PC-CON-014","Preventivo","10/06/2025","David Núñez","Limpieza y actualización","10/12/2025","Finalizado"],
+    ["MNT-2025-0101","SRV-INF-002","Predictivo","08/06/2025","David Núñez","Verificación de discos RAID","08/09/2025","Finalizado"],
+    ["MNT-2025-0119","LAP-GER-003","Preventivo","18/06/2025","Elena Ruiz","Mantenimiento semestral","—","Programado"],
+  ];
+  const visibleMaintenance = maintenanceRows.filter((row) => maintenanceStatus === "Todos" || row[7] === maintenanceStatus);
+  return <>
+    <div className="stats-grid mini"><StatCard icon="clock" label="Programados" value="12" detail="Próximos 30 días" tone="blue"/><StatCard icon="tools" label="En proceso" value="6" detail="2 con prioridad alta" tone="amber"/><StatCard icon="check" label="Finalizados" value="84" detail="Durante 2025" tone="green"/><StatCard icon="coins" label="Costo acumulado" value="S/ 18.460" detail="Enero – junio 2025" tone="purple"/></div>
+    <div className="toolbar"><div className="segmented">{["Todos","Programado","En proceso","Finalizado"].map(status=><button key={status} className={maintenanceStatus===status?"active":""} onClick={()=>setMaintenanceStatus(status)}>{status === "Programado" ? "Programados" : status === "Finalizado" ? "Finalizados" : status}</button>)}</div><button className="btn primary" onClick={()=>open("maintenance")}><Icon name="plus"/> Registrar mantenimiento</button></div>
+    <div className="panel table-panel"><div className="filter-row"><label className="search-box"><Icon name="search"/><input placeholder="Buscar por código o equipo..."/></label><select><option>Todos los tipos</option><option>Preventivo</option><option>Correctivo</option><option>Predictivo</option></select><select><option>Todos los técnicos</option><option>David Núñez</option><option>Elena Ruiz</option></select><button className="btn filter-btn"><Icon name="filter"/> Fechas</button></div><table className="data-table"><thead><tr><th>Código / equipo</th><th>Tipo</th><th>Fecha</th><th>Técnico responsable</th><th>Diagnóstico</th><th>Próximo mant.</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
+      {visibleMaintenance.map(r=><tr key={r[0]}><td><b>{r[0]}</b><small>{r[1]}</small></td>{r.slice(2,7).map(c=><td key={c}>{c}</td>)}<td><Status>{r[7]}</Status></td><td><div className="row-actions"><button><Icon name="eye"/></button><button><Icon name="edit"/></button></div></td></tr>)}
+    </tbody></table></div>
+  </>;
+}
+
+function Hardware({ open }: { open:(m:string)=>void }) {
+  return <>
+    <div className="toolbar"><div className="summary-inline"><span><b>46</b> cambios registrados en 2025</span><span><b>S/ 14.280</b> invertidos en componentes</span></div><button className="btn primary" onClick={()=>open("hardware")}><Icon name="plus"/> Registrar cambio</button></div>
+    <div className="panel comparison-feature"><div className="comparison-top"><div><span className="code">CAM-2024-0098</span><h2>Ampliación de memoria y almacenamiento</h2><p><b>PC-ADM-001</b> · Estación Administrativa Principal · 15 nov. 2024</p></div><Status>Finalizado</Status></div><HardwareComparison compact={false}/></div>
+    <div className="panel table-panel"><PanelHead title="Historial de cambios de hardware" subtitle="Últimos reemplazos registrados"/><table className="data-table"><thead><tr><th>Fecha / equipo</th><th>Componente</th><th>Configuración anterior</th><th>Nueva configuración</th><th>Motivo</th><th>Técnico</th><th>Costo</th><th></th></tr></thead><tbody>
+      {[["28/05/2025","PC-CON-014","Fuente","Dell 260W","Corsair 450W","Falla eléctrica","David Núñez","S/ 280"],["15/11/2024","PC-ADM-001","Memoria RAM","4 GB DDR4","16 GB DDR4","Mejora de rendimiento","Elena Ruiz","S/ 420"],["15/11/2024","PC-ADM-001","Almacenamiento","HDD 500 GB","SSD NVMe 500 GB","Mejora tecnológica","Elena Ruiz","S/ 310"]].map(r=><tr key={r.join("")}><td><b>{r[1]}</b><small>{r[0]}</small></td>{r.slice(2).map(c=><td key={c}>{c}</td>)}<td><button className="icon-btn"><Icon name="eye"/></button></td></tr>)}
+    </tbody></table></div>
+  </>;
+}
+
+function HardwareComparison({ compact }: { compact:boolean }) {
+  return <div className={`before-after ${compact ? "inside-tab" : ""}`}><div className="before"><span className="compare-label">ANTES</span><div className="component-title"><Icon name="file"/><div><small>Componente retirado</small><h3>Disco duro HDD</h3></div></div><dl><div><dt>Marca y modelo</dt><dd>Seagate Barracuda</dd></div><div><dt>Capacidad</dt><dd>500 GB</dd></div><div><dt>Interfaz</dt><dd>SATA III · 7200 RPM</dd></div><div><dt>Estado al retiro</dt><dd><Status>Degradado</Status></dd></div></dl></div><div className="swap-circle"><Icon name="swap"/></div><div className="after"><span className="compare-label">DESPUÉS</span><div className="component-title"><Icon name="zap"/><div><small>Componente instalado</small><h3>Unidad SSD NVMe</h3></div></div><dl><div><dt>Marca y modelo</dt><dd>Kingston NV2</dd></div><div><dt>Capacidad</dt><dd>500 GB</dd></div><div><dt>Interfaz</dt><dd>PCIe 4.0 NVMe</dd></div><div><dt>Estado</dt><dd><Status>Operativo</Status></dd></div></dl></div>{!compact&&<div className="change-reason"><Icon name="file"/><div><span>Motivo del cambio</span><b>Mejora del rendimiento general y extensión de la vida útil del equipo.</b></div><div><span>Técnico responsable</span><b>Elena Ruiz</b></div><div><span>Costo total</span><b>S/ 730,00</b></div></div>}</div>;
+}
+
+function Repowered() {
+  return <>
+    <div className="stats-grid mini"><StatCard icon="zap" label="Equipos repotenciados" value="31" detail="12,5% del inventario" tone="purple"/><StatCard icon="coins" label="Inversión acumulada" value="S/ 28.640" detail="Durante 2024–2025" tone="blue"/><StatCard icon="building" label="Áreas beneficiadas" value="7" detail="Todas las áreas cubiertas" tone="green"/><StatCard icon="clock" label="Vida útil extendida" value="31" detail="Equipos recuperados" tone="amber"/></div>
+    <div className="panel upgrade-panel"><div className="comparison-top"><div><span className="code">REP-2024-0017</span><h2>PC-ADM-001 · Estación Administrativa Principal</h2><p>Administración · Intervención del 15 de noviembre de 2024</p></div><span className="improvement"><Icon name="zap"/> Mejora tecnológica integral</span></div><UpgradeComparison/></div>
+    <div className="panel table-panel"><PanelHead title="Registro de equipos repotenciados" subtitle="Mejoras tecnológicas institucionales"/><table className="data-table"><thead><tr><th>Equipo / área</th><th>Fecha</th><th>Componentes mejorados</th><th>Configuración anterior</th><th>Configuración actual</th><th>Costo</th><th>Técnico</th><th>Estado</th></tr></thead><tbody>{[
+      ["PC-ADM-001","Administración","15/11/2024","RAM · Almacenamiento","4 GB · HDD 500 GB","16 GB · SSD 500 GB","S/ 730","Elena Ruiz"],
+      ["PC-CON-008","Contabilidad","07/10/2024","RAM · Almacenamiento","8 GB · HDD 1 TB","16 GB · SSD 1 TB","S/ 890","David Núñez"],
+      ["PC-LOG-004","Logística","18/08/2024","RAM · SSD · Monitor","4 GB · HDD 500 GB","12 GB · SSD 500 GB","S/ 1.140","Elena Ruiz"],
+    ].map(r=><tr key={r[0]}><td><b>{r[0]}</b><small>{r[1]}</small></td>{r.slice(2).map(c=><td key={c}>{c}</td>)}<td><Status>Operativo</Status></td></tr>)}</tbody></table></div>
+  </>;
+}
+
+function UpgradeComparison() {
+  return <div className="upgrade-comparison"><div><span>CONFIGURACIÓN ANTERIOR</span><h3>Antes de la intervención</h3><ul><li><Icon name="cpu"/><span><small>Procesador</small><b>Intel Core i5-8500</b></span></li><li><Icon name="grid"/><span><small>Memoria RAM</small><b>4 GB DDR4</b></span></li><li><Icon name="file"/><span><small>Almacenamiento</small><b>HDD 500 GB</b></span></li></ul></div><div className="upgrade-arrow">→</div><div className="upgraded"><span>CONFIGURACIÓN ACTUAL</span><h3>Después de la intervención</h3><ul><li><Icon name="cpu"/><span><small>Procesador</small><b>Intel Core i5-8500</b></span></li><li><Icon name="grid"/><span><small>Memoria RAM</small><b>16 GB DDR4 <em>MEJORADO</em></b></span></li><li><Icon name="zap"/><span><small>Almacenamiento</small><b>SSD NVMe 500 GB <em>MEJORADO</em></b></span></li></ul></div></div>;
+}
+
+function Areas() {
+  const areas = [["Administración","42","39","2","1","Patricia Mendoza"],["Contabilidad","38","35","2","1","Roberto Díaz"],["Informática","36","32","3","1","David Núñez"],["Recursos Humanos","31","28","2","1","Lucía Vega"],["Logística","29","26","2","1","Jorge Pineda"],["Tesorería","27","23","2","2","Pedro León"],["Gerencia","18","17","1","0","Ana Salazar"]];
+  const [selectedArea, setSelectedArea] = useState(1);
+  const currentArea = areas[selectedArea];
+  const areaEquipment = equipment.filter(e=>e.area===currentArea[0]);
+  const displayedEquipment = areaEquipment.length ? areaEquipment : [{...equipment[0],code:`area-${selectedArea}`,internal:`PC-${currentArea[0].slice(0,3).toUpperCase()}-001`,name:`Equipo principal de ${currentArea[0]}`,area:currentArea[0],owner:currentArea[5]}];
+  return <><div className="area-cards">{areas.map((a,i)=><button onClick={()=>setSelectedArea(i)} className={i===selectedArea?"selected":""} key={a[0]}><span className="area-icon"><Icon name="building"/></span><span><b>{a[0]}</b><small>{a[1]} equipos asignados</small></span><Icon name="chevron"/></button>)}</div><div className="panel area-detail"><div className="content-head"><div><span className="eyebrow">ÁREA SELECCIONADA</span><h2>{currentArea[0]}</h2><p>Responsable del área: {currentArea[5]}</p></div><div><button className="btn secondary"><Icon name="swap"/> Trasladar equipo</button><button className="btn primary"><Icon name="plus"/> Asignar equipo</button></div></div><div className="area-summary"><span><b>{currentArea[1]}</b>Total equipos</span><span className="green"><b>{currentArea[2]}</b>Operativos</span><span className="amber"><b>{currentArea[3]}</b>En mantenimiento</span><span className="red"><b>{currentArea[4]}</b>Fuera de servicio</span></div><table className="data-table"><thead><tr><th>Equipo</th><th>Tipo</th><th>Responsable</th><th>Ubicación</th><th>Último mantenimiento</th><th>Estado</th></tr></thead><tbody>{displayedEquipment.map(e=><tr key={e.code}><td><b>{e.internal}</b><small>{e.name}</small></td><td>{e.type}</td><td>{e.owner}</td><td>Edificio Central · Piso {selectedArea % 3 + 1}</td><td>{e.maintenance}</td><td><Status>{e.status}</Status></td></tr>)}</tbody></table></div></>;
+}
+
+function Reports({ open }: { open:(m:string)=>void }) {
+  const [selected, setSelected] = useState(1);
+  return <div className="reports-layout"><div className="panel report-menu"><div className="report-menu-head"><h3>Tipos de reporte</h3><p>Seleccione el informe que desea generar</p></div>{reportTypes.map((r,i)=><button className={selected===i?"active":""} onClick={()=>setSelected(i)} key={r[0]}><span><Icon name={r[2]}/></span><div><b>{r[0]}</b><small>{r[1]}</small></div><Icon name="chevron"/></button>)}</div><div className="panel report-builder"><div className="builder-head"><span><Icon name={reportTypes[selected][2]} size={25}/></span><div><h2>Reporte de {reportTypes[selected][0].toLowerCase()}</h2><p>{reportTypes[selected][1]}</p></div></div><div className="builder-section"><h3><span>1</span> Filtros del reporte</h3><div className="form-grid"><SelectField label="Área institucional" options={["Todas las áreas","Administración","Contabilidad","Informática","Logística"]}/><SelectField label="Tipo de equipo" options={["Todos los tipos","Escritorio","Laptop","Servidor","Impresora"]}/><SelectField label="Estado operativo" options={["Todos los estados","Operativo","En mantenimiento","Fuera de servicio"]}/><Field label="Rango de fechas" value="01/01/2025  –  12/06/2025"/></div></div><div className="builder-section"><h3><span>2</span> Configuración del documento</h3><div className="report-options"><label><input type="checkbox" defaultChecked/> Incluir encabezado institucional</label><label><input type="checkbox" defaultChecked/> Incluir resumen estadístico</label><label><input type="checkbox" defaultChecked/> Incluir gráficos</label><label><input type="checkbox"/> Incluir firmas de conformidad</label></div></div><div className="report-summary"><div><span>Reporte seleccionado</span><b>{reportTypes[selected][0]}</b></div><div><span>Registros estimados</span><b>{selected===1?"248 equipos · 7 áreas":"248 registros"}</b></div><div><span>Emitido por</span><b>Javier Mendoza · Administrador</b></div></div><div className="builder-actions"><button className="btn secondary"><Icon name="download"/> Exportar Excel</button><button className="btn secondary" onClick={()=>open("report")}><Icon name="eye"/> Vista previa</button><button className="btn primary" onClick={()=>open("report")}><Icon name="file"/> Generar PDF</button></div></div></div>;
+}
+
+function Alerts() {
+  const alerts = [["Alta","Mantenimiento vencido","PC-TES-007 · Equipo Tesorería 07","El mantenimiento programado venció el 07 de junio de 2025.","Hace 5 días"],["Alta","Falla de componente","IMP-RH-002 · Impresora RR. HH.","Unidad fusora con falla. Intervención correctiva en proceso.","Hace 3 días"],["Media","Mantenimientos próximos","8 equipos programados","Los mantenimientos vencen durante los próximos 7 días.","Hoy"],["Media","Componente pendiente","SRV-INF-001 · Servidor principal","Disco de respaldo reporta sectores degradados.","Ayer"],["Baja","Sin mantenimiento reciente","6 equipos sin intervención en 12 meses","Se recomienda programar mantenimiento preventivo.","Hace 2 días"]];
+  const [priority, setPriority] = useState("Todas");
+  const [read, setRead] = useState(false);
+  const visibleAlerts = alerts.filter(a=>priority==="Todas" || a[0]===priority);
+  return <><div className="toolbar"><div className="segmented">{[["Todas","12"],["Alta","3"],["Media","5"],["Baja","4"]].map(([level,count])=><button key={level} className={priority===level?"active":""} onClick={()=>setPriority(level)}>{level} <b>{count}</b></button>)}</div><button className="btn secondary" onClick={()=>setRead(true)}><Icon name="check"/> {read ? "Alertas marcadas como leídas" : "Marcar todas como leídas"}</button></div><div className={`alert-list ${read?"alerts-read":""}`}>{visibleAlerts.map(a=><div className="panel" key={a[1]}><span className={`alert-icon ${a[0].toLowerCase()}`}><Icon name="bell"/></span><div><div><Status>{a[0]}</Status><small>{a[4]}</small></div><h3>{a[1]}</h3><b>{a[2]}</b><p>{a[3]}</p></div><button className="btn secondary">Revisar <Icon name="chevron"/></button></div>)}</div></>;
+}
+
+function Administration() {
+  return <><div className="admin-grid">{[["Usuarios","24 usuarios activos","Gestione accesos y perfiles del personal","building"],["Roles y permisos","4 roles configurados","Defina permisos por módulo y acción","settings"],["Técnicos responsables","8 técnicos registrados","Administre el equipo de soporte","tools"],["Categorías de equipos","12 categorías","Configure tipos y clasificaciones","monitor"],["Tipos de mantenimiento","4 tipos activos","Defina protocolos de intervención","clock"],["Configuración institucional","Datos generales","Personalice identidad y parámetros","building"]].map(a=><button className="panel" key={a[0]}><span><Icon name={a[3]}/></span><div><h3>{a[0]}</h3><b>{a[1]}</b><p>{a[2]}</p></div><Icon name="chevron"/></button>)}</div><div className="panel users-panel"><PanelHead title="Usuarios del sistema" subtitle="Últimos accesos registrados" action="Gestionar usuarios"/><table className="data-table"><thead><tr><th>Usuario</th><th>Rol</th><th>Área</th><th>Último acceso</th><th>Estado</th></tr></thead><tbody>{[["Javier Mendoza","Administrador","Informática","Hoy, 09:42"],["David Núñez","Técnico de soporte","Informática","Hoy, 08:15"],["Elena Ruiz","Técnico de soporte","Informática","Ayer, 17:36"],["Patricia Mendoza","Consulta","Administración","10 jun, 14:20"]].map((r,i)=><tr key={r[0]}><td><div className="user-cell"><span>{r[0].split(" ").map(x=>x[0]).join("")}</span><b>{r[0]}</b></div></td>{r.slice(1).map(c=><td key={c}>{c}</td>)}<td><Status>{i===3?"Inactivo":"Activo"}</Status></td></tr>)}</tbody></table></div></>;
+}
+
+function EquipmentForm() {
+  const [tab,setTab]=useState(0);
+  return <><div className="tabs modal-tabs">{["Información general","Características técnicas","Componentes instalados"].map((t,i)=><button className={tab===i?"active":""} onClick={()=>setTab(i)} key={t}>{i+1}. {t}</button>)}</div>{tab===0?<div className="form-section"><h3>Identificación del equipo</h3><div className="form-grid"><Field label="Código patrimonial" value="PAT-2025-"/><Field label="Código interno" value="PC-CON-"/><Field label="Nombre del equipo"/><SelectField label="Tipo de equipo" options={["Computadora de escritorio","Laptop","Servidor","Impresora","Monitor","Otro periférico"]}/><Field label="Marca"/><Field label="Modelo"/><Field label="Número de serie"/><Field label="Fecha de adquisición" type="date"/></div><h3>Asignación institucional</h3><div className="form-grid"><SelectField label="Área de ubicación" options={["Contabilidad","Administración","Informática","Recursos Humanos","Logística","Tesorería","Gerencia"]}/><Field label="Responsable asignado"/><Field label="Proveedor"/><SelectField label="Estado operativo" options={["Operativo","En mantenimiento","Fuera de servicio"]}/></div></div>:tab===1?<div className="form-section"><h3>Procesador y memoria</h3><div className="form-grid"><Field label="Fabricante del procesador"/><Field label="Modelo"/><Field label="Generación"/><Field label="Número de núcleos"/><Field label="Capacidad RAM"/><SelectField label="Tipo DDR" options={["DDR5","DDR4","DDR3"]}/><Field label="Velocidad"/><Field label="Cantidad de módulos"/></div><h3>Almacenamiento y software</h3><div className="form-grid"><SelectField label="Tipo de unidad" options={["SSD NVMe","SSD SATA","HDD"]}/><Field label="Capacidad"/><Field label="Sistema operativo"/><Field label="Estado de licencia"/></div></div>:<div className="empty-state compact-empty"><Icon name="cpu" size={36}/><h3>Componentes instalados</h3><p>Guarde el equipo y agregue sus componentes individualmente para mantener trazabilidad.</p><button className="btn secondary"><Icon name="plus"/> Agregar componente</button></div>}</>;
+}
+
+function MaintenanceForm() {
+  return <div className="form-section"><div className="form-grid"><Field label="Código del mantenimiento" value="MNT-2025-0120"/><SelectField label="Equipo intervenido" options={["PC-ADM-001 · Estación Administrativa","PC-CON-014 · Estación Contable","IMP-RH-002 · Impresora RR. HH."]}/><SelectField label="Tipo de mantenimiento" options={["Correctivo","Preventivo","Predictivo","Repotenciación"]}/><Field label="Fecha de ejecución" type="date"/><SelectField label="Técnico responsable" options={["David Núñez","Elena Ruiz"]}/><SelectField label="Estado" options={["Programado","En proceso","Finalizado"]}/></div><h3>Detalle de la intervención</h3><div className="form-grid"><Field label="Problema identificado" value="Equipo presenta lentitud y reinicios inesperados"/><Field label="Diagnóstico" value="Unidad de almacenamiento con sectores degradados"/><Field label="Actividades realizadas"/><Field label="Componentes intervenidos"/><SelectField label="Resultado" options={["Solucionado","Solución parcial","Requiere seguimiento"]}/><Field label="Costo" value="S/ "/><Field label="Próximo mantenimiento" type="date"/><Field label="Observaciones"/></div></div>;
+}
+
+function HardwareForm() {
+  return <div className="form-section"><div className="form-grid"><SelectField label="Equipo" options={["PC-ADM-001","PC-CON-014","SRV-INF-002"]}/><Field label="Fecha de cambio" type="date"/><SelectField label="Componente reemplazado" options={["Memoria RAM","Almacenamiento","Fuente de alimentación","Tarjeta gráfica","Procesador"]}/><SelectField label="Técnico responsable" options={["Elena Ruiz","David Núñez"]}/></div><div className="form-columns"><div><h3>Configuración anterior</h3><Field label="Marca y modelo anterior"/><Field label="Especificaciones anteriores"/><Field label="Número de serie"/></div><div><h3>Nueva configuración</h3><Field label="Marca y modelo nuevo"/><Field label="Nuevas especificaciones"/><Field label="Número de serie"/></div></div><div className="form-grid"><Field label="Motivo del cambio"/><Field label="Costo del cambio" value="S/ "/></div></div>;
+}
+
+function ReportPreview({ onClose }: { onClose:()=>void }) {
+  return <div className="report-preview"><div className="preview-toolbar"><span>Vista previa del documento · 2 páginas</span><div><button className="btn secondary" onClick={onClose}>Cerrar</button><button className="btn primary"><Icon name="download"/> Descargar PDF</button></div></div><div className="paper"><header><div className="report-logo"><Icon name="cpu"/><span><b>INSTITUCIÓN DEMO</b><small>Oficina de Tecnologías de la Información</small></span></div><div><b>REPORTE N.° 025-2025-OTI</b><small>Fecha de emisión: 12 de junio de 2025</small></div></header><h1>REPORTE DE EQUIPOS POR ÁREA</h1><p className="paper-intro">El presente documento detalla la distribución del inventario tecnológico por las áreas institucionales, al 12 de junio de 2025.</p><div className="paper-summary"><div><span>Total de equipos</span><b>248</b></div><div><span>Áreas institucionales</span><b>7</b></div><div><span>Equipos operativos</span><b>216</b></div></div><h2>1. Resumen por área institucional</h2><table><thead><tr><th>Área</th><th>Total</th><th>Operativos</th><th>En mantenimiento</th><th>Fuera de servicio</th></tr></thead><tbody>{[["Administración","42","39","2","1"],["Contabilidad","38","35","2","1"],["Informática","36","32","3","1"],["Recursos Humanos","31","28","2","1"],["Logística","29","26","2","1"],["Tesorería","27","23","2","2"],["Gerencia","18","17","1","0"]].map(r=><tr key={r[0]}>{r.map(c=><td key={c}>{c}</td>)}</tr>)}</tbody></table><footer><span>Generado por: Javier Mendoza · Administrador</span><span>SIGEMTI · Página 1 de 2</span></footer></div></div>;
+}
+
+export default function App() {
+  const [logged, setLogged] = useState(false);
+  const [page, setPage] = useState<Page>("dashboard");
+  const [sidebar, setSidebar] = useState(false);
+  const [modal, setModal] = useState("");
+  const [notice, setNotice] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  useEffect(() => {
+    if (!feedback) return;
+    const timeout = window.setTimeout(() => setFeedback(""), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
+  if (!logged) return <Login onLogin={()=>setLogged(true)}/>;
+  const [title, subtitle] = pageTitles[page];
+  const go = (p: Page) => { setPage(p); setSidebar(false); window.scrollTo({top:0,behavior:"smooth"}); };
+  const announceClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const button = (event.target as HTMLElement).closest("button");
+    if (!button || button.classList.contains("menu-btn")) return;
+    const label = button.innerText.replace(/\s+/g, " ").trim();
+    if (label && !["×", "‹", "›"].includes(label)) setFeedback(`${label} · acción realizada`);
+  };
+  const announceChange = (event: React.FormEvent<HTMLDivElement>) => {
+    const control = event.target as HTMLInputElement | HTMLSelectElement;
+    if (control.tagName === "SELECT") setFeedback(`Filtro aplicado: ${control.value}`);
+  };
+  return <div className="app-shell" onClickCapture={announceClick} onChangeCapture={announceChange}>
+    <aside className={sidebar?"sidebar open":"sidebar"}>
+      <div className="sidebar-brand"><Logo dark/><button onClick={()=>setSidebar(false)}><Icon name="x"/></button></div>
+      <nav>{nav.map(n=><div key={n.page}>{n.section&&<span className="nav-section">{n.section}</span>}<button className={page===n.page||(page==="ficha"&&n.page==="inventario")?"active":""} onClick={()=>go(n.page)}><Icon name={n.icon}/><span>{n.label}</span>{n.badge&&<b>{n.badge}</b>}</button></div>)}</nav>
+      <div className="sidebar-help"><Icon name="tools"/><div><b>¿Necesita ayuda?</b><span>Consulte el manual del sistema</span><button>Ver documentación</button></div></div>
+      <div className="sidebar-user"><span>JM<i/></span><div><b>Javier Mendoza</b><small>Administrador</small></div><button onClick={()=>setLogged(false)}><Icon name="logout"/></button></div>
+    </aside>
+    <div className="main-shell">
+      <header className="topbar"><button className="menu-btn" onClick={()=>setSidebar(true)}><Icon name="menu"/></button><label className="global-search"><Icon name="search"/><input placeholder="Buscar equipos, mantenimientos..."/><kbd>⌘ K</kbd></label><div className="top-actions"><button onClick={()=>setNotice(!notice)}><Icon name="bell"/><i>3</i></button><span/><button className="profile" onClick={()=>setLogged(false)}><b>JM</b><span><strong>Javier Mendoza</strong><small>Administrador</small></span><i>⌄</i></button></div>{notice&&<div className="notice-pop"><h3>Notificaciones recientes</h3><p><i/> 3 mantenimientos vencidos requieren atención.</p><p><i/> Se registró un nuevo equipo en Contabilidad.</p><button onClick={()=>{go("alertas");setNotice(false)}}>Ver todas las alertas</button></div>}</header>
+      <main><div className="page-heading"><div><div className="breadcrumb">SIGEMTI <span>/</span> {title}</div><h1>{title}</h1><p>{subtitle}</p></div><span className="date-pill"><Icon name="clock"/> Jueves, 12 de junio de 2025</span></div>
+        {page==="dashboard"&&<Dashboard go={go}/>}
+        {page==="inventario"&&<Inventory go={go} open={setModal}/>}
+        {page==="ficha"&&<Detail open={setModal}/>}
+        {page==="mantenimiento"&&<Maintenance open={setModal}/>}
+        {page==="hardware"&&<Hardware open={setModal}/>}
+        {page==="repotenciados"&&<Repowered/>}
+        {page==="areas"&&<Areas/>}
+        {page==="reportes"&&<Reports open={setModal}/>}
+        {page==="alertas"&&<Alerts/>}
+        {page==="administracion"&&<Administration/>}
+      </main>
+    </div>
+    {sidebar&&<div className="sidebar-overlay" onClick={()=>setSidebar(false)}/>}
+    {modal==="equipment"&&<Modal title="Registrar nuevo equipo" wide onClose={()=>setModal("")} action="Guardar equipo"><EquipmentForm/></Modal>}
+    {modal==="maintenance"&&<Modal title="Registrar mantenimiento correctivo" wide onClose={()=>setModal("")} action="Registrar mantenimiento"><MaintenanceForm/></Modal>}
+    {modal==="hardware"&&<Modal title="Registrar cambio de hardware" wide onClose={()=>setModal("")} action="Registrar cambio"><HardwareForm/></Modal>}
+    {modal==="report"&&<div className="modal-backdrop report-modal"><ReportPreview onClose={()=>setModal("")}/></div>}
+    {feedback&&<div className="action-toast"><span><Icon name="check"/></span><div><b>Actualización completada</b><small>{feedback}</small></div></div>}
+  </div>;
+}

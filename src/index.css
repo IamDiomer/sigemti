@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@layer base {
+  body {
+    margin: 0;
+    min-width: 360px;
+    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    background: #f5f7fb;
+    color: #1c2c48;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  svg {
+    flex-shrink: 0;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "description": "Administra el inventario de equipos informáticos, mantenimientos y cambios de hardware, y genera reportes para equipos de soporte institucional.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  },
+  "title": "SIGEMTI · Gestión tecnológica institucional",
+  "language": "es"
+}
