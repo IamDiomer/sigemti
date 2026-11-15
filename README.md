@@ -25,9 +25,10 @@ Abre la dirección indicada por Vite, normalmente http://localhost:8443/. En Fig
 | --- | --- | --- |
 | Administrador · Diomer Atachao | diomeradmin@udh.edu.pe | Demo2026! |
 | Administradora · Milagros Gonzales | milagrosgonzales@udh.edu.pe | Demo2026! |
-| Técnico de soporte | tecnico@udh.edu.pe | Demo2026! |
+| Técnico de soporte · Elena Ruiz | tecnico@udh.edu.pe | Demo2026! |
+| Técnico de soporte · Franklin Atencia | franklinatencia@udh.edu.pe | Demo2026! |
 
-Los botones de acceso rellenan las credenciales; luego pulsa «Iniciar sesión». El administrador gestiona patrimonio, usuarios, catálogos y traslados. El técnico consulta inventario y reportes, registra mantenimientos, componentes y evidencias. Los permisos se simulan en la interfaz; no hay autenticación de servidor.
+El selector de acceso de demostración rellena las credenciales; luego pulsa «Iniciar sesión». El administrador gestiona patrimonio, usuarios, catálogos y traslados. El técnico consulta inventario y reportes, registra mantenimientos, componentes y evidencias. Los permisos se simulan en la interfaz; no hay autenticación de servidor.
 
 ## Pantallas y funciones
 

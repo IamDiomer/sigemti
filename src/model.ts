@@ -108,6 +108,7 @@ export type Store = {
   institution: string;
   peripheralsAdded?: boolean;
   administratorsConfigured?: boolean;
+  franklinAdded?: boolean;
 };
 export const statuses = ["Operativo", "En mantenimiento", "Fuera de servicio"];
 export const componentFields: Record<string, string> = {
@@ -387,7 +388,7 @@ export const seed: Store = {
   movements: [],
   documents: [],
   areas: initialAreas,
-  technicians: ["David Núñez", "Elena Ruiz"],
+  technicians: ["David Núñez", "Elena Ruiz", "Franklin Atencia"],
   categories: ["Escritorio", "Laptop", "Servidor", "Impresora", "Monitor", "Otro periférico"],
   maintenanceTypes: ["Preventivo", "Correctivo", "Predictivo", "Repotenciación"],
   institution: "UNIVERSIDAD DE HUÁNUCO",
@@ -411,6 +412,13 @@ export const seed: Store = {
       id: "USR-003",
       name: "Elena Ruiz",
       email: "tecnico@udh.edu.pe",
+      role: "Técnico de soporte",
+      active: "Activo",
+    },
+    {
+      id: "USR-004",
+      name: "Franklin Atencia",
+      email: "franklinatencia@udh.edu.pe",
       role: "Técnico de soporte",
       active: "Activo",
     },
@@ -834,6 +842,24 @@ export function configureAdministrators(store: Store): Store {
 }
 
 export function readStore(): Store {
+  const store = readStoredData();
+  if (store.franklinAdded) return store;
+  const desired = seed.users.find((u) => u.email === "franklinatencia@udh.edu.pe")!;
+  const existing = store.users.find((u) =>
+    u.email.toLowerCase() === desired.email || u.name.trim().toLowerCase() === "franklin atencia",
+  );
+  return {
+    ...store,
+    franklinAdded: true,
+    users: existing ? store.users : [...store.users, {
+      ...desired,
+      id: store.users.some((u) => u.id === desired.id) ? uid() : desired.id,
+    }],
+    technicians: [...new Set([...store.technicians, existing?.name || desired.name])],
+  };
+}
+
+function readStoredData(): Store {
   try {
     const v = JSON.parse(localStorage.getItem("sigemti-v2") || "null");
     if (v?.version === 2 && Array.isArray(v.equipment) && Array.isArray(v.components))
